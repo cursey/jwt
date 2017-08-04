@@ -54,31 +54,24 @@ namespace jwt {
 #define SCOPE_EXIT(x) do { onLeave.push_back([&]() { x; }); } while(0)
 
         const EVP_MD* evp = nullptr;
-        int type = 0;
 
         if (alg == "RS256") {
             evp = EVP_sha256();
-            type = EVP_PKEY_RSA;
         }
         else if (alg == "RS384") {
             evp = EVP_sha384();
-            type = EVP_PKEY_RSA;
         }
         else if (alg == "RS512") {
             evp = EVP_sha512();
-            type = EVP_PKEY_RSA;
         }
         else if (alg == "ES256") {
             evp = EVP_sha256();
-            type = EVP_PKEY_EC;
         }
         else if (alg == "ES384") {
             evp = EVP_sha384();
-            type = EVP_PKEY_EC;
         }
         else if (alg == "ES512") {
             evp = EVP_sha512();
-            type = EVP_PKEY_EC;
         }
         else {
             return string{};
@@ -96,12 +89,6 @@ namespace jwt {
         SCOPE_EXIT(if (pkey) EVP_PKEY_free(pkey));
 
         if (!pkey) {
-            return string{};
-        }
-
-        auto pkeyType = EVP_PKEY_id(pkey);
-
-        if (pkeyType != type) {
             return string{};
         }
 
@@ -153,31 +140,24 @@ namespace jwt {
 #define SCOPE_EXIT(x) do { onLeave.push_back([&]() { x; }); } while(0)
 
         const EVP_MD* evp = nullptr;
-        int type = 0;
 
         if (alg == "RS256") {
             evp = EVP_sha256();
-            type = EVP_PKEY_RSA;
         }
         else if (alg == "RS384") {
             evp = EVP_sha384();
-            type = EVP_PKEY_RSA;
         }
         else if (alg == "RS512") {
             evp = EVP_sha512();
-            type = EVP_PKEY_RSA;
         }
         else if (alg == "ES256") {
             evp = EVP_sha256();
-            type = EVP_PKEY_EC;
         }
         else if (alg == "ES384") {
             evp = EVP_sha384();
-            type = EVP_PKEY_EC;
         }
         else if (alg == "ES512") {
             evp = EVP_sha512();
-            type = EVP_PKEY_EC;
         }
         else {
             return false;
@@ -202,12 +182,6 @@ namespace jwt {
         SCOPE_EXIT(if (pkey) EVP_PKEY_free(pkey));
 
         if (!pkey) {
-            return false;
-        }
-
-        auto pkeyType = EVP_PKEY_id(pkey);
-
-        if (pkeyType != type) {
             return false;
         }
 

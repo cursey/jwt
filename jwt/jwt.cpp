@@ -55,7 +55,7 @@ namespace jwt {
             evp = EVP_sha512();
         }
         else {
-            return string();
+            return string{};
         }
 
         vector<uint8_t> out(EVP_MAX_MD_SIZE);
@@ -106,14 +106,14 @@ namespace jwt {
             type = EVP_PKEY_EC;
         }
         else {
-            return string();
+            return string{};
         }
 
         auto bufkey = BIO_new_mem_buf(key.c_str(), key.length());
         SCOPE_EXIT(if (bufkey) BIO_free(bufkey));
 
         if (!bufkey) {
-            return string();
+            return string{};
         }
 
         // Use OpenSSL's default passphrase callbacks if needed.
@@ -121,44 +121,44 @@ namespace jwt {
         SCOPE_EXIT(if (pkey) EVP_PKEY_free(pkey));
 
         if (!pkey) {
-            return string();
+            return string{};
         }
 
         auto pkeyType = EVP_PKEY_id(pkey);
 
         if (pkeyType != type) {
-            return string();
+            return string{};
         }
 
         auto mdctx = EVP_MD_CTX_create();
         SCOPE_EXIT(if (mdctx) EVP_MD_CTX_destroy(mdctx));
 
         if (!mdctx) {
-            return string();
+            return string{};
         }
 
         // Initialize the digest sign operation.
         if (EVP_DigestSignInit(mdctx, nullptr, evp, nullptr, pkey) != 1) {
-            return string();
+            return string{};
         }
 
         // Update the digest sign with the message.
         if (EVP_DigestSignUpdate(mdctx, str.c_str(), str.length()) != 1) {
-            return string();
+            return string{};
         }
 
         // Determin the size of the finalized digest sign.
         size_t siglen = 0;
 
         if (EVP_DigestSignFinal(mdctx, nullptr, &siglen) != 1) {
-            return string();
+            return string{};
         }
 
         // Finalize it.
         vector<uint8_t> sig(siglen);
 
         if (EVP_DigestSignFinal(mdctx, sig.data(), &siglen) != 1) {
-            return string();
+            return string{};
         }
 
         // For RSA, we are done.
@@ -170,7 +170,7 @@ namespace jwt {
         auto ecKey = EVP_PKEY_get1_EC_KEY(pkey);
 
         if (!ecKey) {
-            return string();
+            return string{};
         }
 
         auto degree = EC_GROUP_get_degree(EC_KEY_get0_group(ecKey));
@@ -182,7 +182,7 @@ namespace jwt {
         SCOPE_EXIT(if (ecSig) ECDSA_SIG_free(ecSig));
 
         if (!ecSig) {
-            return string();
+            return string{};
         }
 
         const BIGNUM *ecSigR = nullptr;
@@ -195,7 +195,7 @@ namespace jwt {
         auto bnLen = (degree + 7) / 8;
 
         if (rLen > bnLen || sLen > bnLen) {
-            return string();
+            return string{};
         }
 
         auto bufLen = 2 * bnLen;
@@ -358,24 +358,36 @@ namespace jwt {
         // Sign it and return the final JWT.
         auto encodedToken = encodedHeader + "." + encodedPayload;
         const string& theAlg = header["alg"];
+        string signature{};
 
         if (theAlg == "none") {
-            return encodedToken + ".";
+            // Nothing to sign.
         }
         else if (theAlg.find("HS") != string::npos) {
-            return encodedToken + "." + signHMAC(encodedToken, key, theAlg);
+            signature = signHMAC(encodedToken, key, theAlg);
+        }
+        else {
+            signature = signPEM(encodedToken, key, theAlg);
         }
 
-        return encodedToken + "." + signPEM(encodedToken, key, theAlg);
+        if (theAlg != "none" && signature.empty()) {
+            return string{};
+        }
+
+        return encodedToken + "." + signature;
     }
 
     json decode(const string& jwt, const string& key, const set<string>& alg) {
+        if (jwt.empty()) {
+            return json{};
+        }
+
         // Make sure the jwt we recieve looks like a jwt.
         auto firstPeriod = jwt.find_first_of('.');
         auto secondPeriod = jwt.find_first_of('.', firstPeriod + 1);
 
         if (firstPeriod == string::npos || secondPeriod == string::npos) {
-            return json();
+            return json{};
         }
 
         // Decode the header so we can get the alg used by the jwt.
@@ -386,11 +398,11 @@ namespace jwt {
 
         // Make sure no key is supplied if the alg is none.
         if (theAlg == "none" && !key.empty()) {
-            return json();
+            return json{};
         }
         // Make sure the alg supplied is one we expect.
         else if (alg.count(theAlg) == 0 && !alg.empty()) {
-            return json();
+            return json{};
         }
 
         auto encodedToken = jwt.substr(0, secondPeriod);
@@ -402,12 +414,12 @@ namespace jwt {
         }
         else if (theAlg.find("HS") != string::npos) {
             if (signature != signHMAC(encodedToken, key, theAlg)) {
-                return json();
+                return json{};
             }
         }
         else {
             if (!verifyPEM(encodedToken, signature, key, theAlg)) {
-                return json();
+                return json{};
             }
         }
 

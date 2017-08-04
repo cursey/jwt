@@ -8,6 +8,39 @@
 using namespace std;
 using namespace nlohmann;
 
+SCENARIO("JWT's can fail to encode and decode") {
+    string key{ "secret" };
+    auto payload = R"(
+        {
+            "sub": "1234567890",
+            "name": "John Doe",
+            "admin": true
+        }
+    )"_json;
+
+    GIVEN("some payload") {
+        WHEN("encoded with an invalid algorithm") {
+            auto encoded = jwt::encode(payload, key, { "HK256" });
+
+            THEN("it returns an empty string") {
+                REQUIRE(encoded.empty());
+            }
+        }
+    }
+
+    GIVEN("An empty string") {
+        string encoded{};
+
+        WHEN("it is decoded") {
+            auto decoded = jwt::decode(encoded, key);
+
+            THEN("it fails to decode by returning nullptr") {
+                REQUIRE(decoded == nullptr);
+            }
+        }
+    }
+}
+
 SCENARIO("JWT's can be encoded and decoded using no alg") {
     auto payload = R"(
         {

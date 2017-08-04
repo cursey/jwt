@@ -16,31 +16,6 @@ using namespace std;
 using namespace nlohmann;
 using namespace cppcodec;
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-
-static void ECDSA_SIG_get0(const ECDSA_SIG *sig, const BIGNUM **pr, const BIGNUM **ps)
-{
-    if (pr != NULL)
-        *pr = sig->r;
-    if (ps != NULL)
-        *ps = sig->s;
-}
-
-static int ECDSA_SIG_set0(ECDSA_SIG *sig, BIGNUM *r, BIGNUM *s)
-{
-    if (r == NULL || s == NULL)
-        return 0;
-
-    BN_clear_free(sig->r);
-    BN_clear_free(sig->s);
-    sig->r = r;
-    sig->s = s;
-
-    return 1;
-}
-
-#endif
-
 namespace jwt {
     string signHMAC(const string& str, const string& key, const string& alg) {
         const EVP_MD* evp = nullptr;
@@ -162,49 +137,7 @@ namespace jwt {
         }
 
         // For RSA, we are done.
-        if (pkeyType == EVP_PKEY_RSA) {
-            return base64_url::encode(sig.data(), siglen);
-        }
-
-        // For EC we need to convert.
-        auto ecKey = EVP_PKEY_get1_EC_KEY(pkey);
-
-        if (!ecKey) {
-            return string{};
-        }
-
-        auto degree = EC_GROUP_get_degree(EC_KEY_get0_group(ecKey));
-
-        EC_KEY_free(ecKey);
-
-        auto sigData = sig.data();
-        auto ecSig = d2i_ECDSA_SIG(nullptr, (const unsigned char**)&sigData, siglen);
-        SCOPE_EXIT(if (ecSig) ECDSA_SIG_free(ecSig));
-
-        if (!ecSig) {
-            return string{};
-        }
-
-        const BIGNUM *ecSigR = nullptr;
-        const BIGNUM *ecSigS = nullptr;
-
-        ECDSA_SIG_get0(ecSig, &ecSigR, &ecSigS);
-
-        auto rLen = BN_num_bytes(ecSigR);
-        auto sLen = BN_num_bytes(ecSigS);
-        auto bnLen = (degree + 7) / 8;
-
-        if (rLen > bnLen || sLen > bnLen) {
-            return string{};
-        }
-
-        auto bufLen = 2 * bnLen;
-        vector<uint8_t> rawBuf(bufLen, 0);
-
-        BN_bn2bin(ecSigR, rawBuf.data() + bnLen - rLen);
-        BN_bn2bin(ecSigS, rawBuf.data() + bnLen - sLen);
-
-        return base64_url::encode(rawBuf.data(), bufLen);
+        return base64_url::encode(sig.data(), siglen);
     }
 
     bool verifyPEM(const string& str, const string& b64sig, const string& key, const string& alg) {
@@ -276,52 +209,6 @@ namespace jwt {
 
         if (pkeyType != type) {
             return false;
-        }
-
-        // Convert EC sigs back to ASN1.
-        if (pkeyType == EVP_PKEY_EC) {
-            auto ecSig = ECDSA_SIG_new();
-            SCOPE_EXIT(if (ecSig) ECDSA_SIG_free(ecSig));
-
-            if (!ecSig) {
-                return false;
-            }
-
-            auto ecKey = EVP_PKEY_get1_EC_KEY(pkey);
-
-            if (!ecKey) {
-                return false;
-            }
-
-            auto degree = EC_GROUP_get_degree(EC_KEY_get0_group(ecKey));
-
-            EC_KEY_free(ecKey);
-
-            auto bnLen = (degree + 7) / 8;
-
-            if (bnLen * 2 != siglen) {
-                return false;
-            }
-
-            auto ecSigR = BN_bin2bn(sig.data(), bnLen, nullptr);
-            auto ecSigS = BN_bin2bn(sig.data() + bnLen, bnLen, nullptr);
-
-            if (!ecSigR || !ecSigS) {
-                return false;
-            }
-
-            ECDSA_SIG_set0(ecSig, ecSigR, ecSigS);
-            sig.clear();
-
-            siglen = i2d_ECDSA_SIG(ecSig, nullptr);
-            sig.resize(siglen, 0);
-
-            auto p = sig.data();
-            siglen = i2d_ECDSA_SIG(ecSig, &p);
-
-            if (siglen == 0) {
-                return false;
-            }
         }
 
         auto mdctx = EVP_MD_CTX_create();

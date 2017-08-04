@@ -400,3 +400,168 @@ ehde/zUxo6UvS7UrBQIDAQAB
         }
     }
 }
+
+SCENARIO("JWT's can be encoded and decoded using ES256") {
+    auto payload = R"(
+        {
+            "sub": "1234567890",
+            "name": "John Doe",
+            "admin": true
+        }
+    )"_json;
+    auto privateKey = R"(
+-----BEGIN EC PRIVATE KEY-----
+MIHbAgEBBEGPWb0IqNdCUE270P42PYnRIkqZSaXB9kkWDQkfENA3sTM5Uu+5ZF+B
+Wk336PYnNocbvtXUSl3x+1wNyw6Nbp0qpaAHBgUrgQQAI6GBiQOBhgAEAEf2nD9L
+RWnmqUSFhaT7AKXEWIhXOTr5s5UXCayDc0oUQR2SrnyevwNvlzarmBE6qZx2MFxS
+paPzXtGbPKSn89BMAD+v84XQhyzwA2j0/IISkp+JJyCk3FK4/GqW7ZIhGfu8LZbc
+hxGofNuXUwkni7KTi3w0zeEtZSVlFWTdZqCuIdGi
+-----END EC PRIVATE KEY-----
+)";
+    auto publicKey = R"(
+-----BEGIN PUBLIC KEY-----
+MIGbMBAGByqGSM49AgEGBSuBBAAjA4GGAAQAR/acP0tFaeapRIWFpPsApcRYiFc5
+OvmzlRcJrINzShRBHZKufJ6/A2+XNquYETqpnHYwXFKlo/Ne0Zs8pKfz0EwAP6/z
+hdCHLPADaPT8ghKSn4knIKTcUrj8apbtkiEZ+7wtltyHEah825dTCSeLspOLfDTN
+4S1lJWUVZN1moK4h0aI=
+-----END PUBLIC KEY-----
+)";
+
+    GIVEN("An encoded payload using a private key") {
+        auto encoded = jwt::encode(payload, privateKey, "ES256");
+
+        WHEN("it is decoded using a public key") {
+            auto decoded = jwt::decode(encoded, publicKey, { "ES256" });
+
+            THEN("it equals the payload") {
+                REQUIRE(decoded == payload);
+            }
+        }
+
+        WHEN("it is auto decoded with no algorithms specified") {
+            auto decoded = jwt::decode(encoded, publicKey);
+
+            THEN("the algorithm is determined by the token and properly decoded") {
+                REQUIRE(decoded == payload);
+            }
+        }
+
+        WHEN("it is decoded with the wrong algorithms specified") {
+            auto decoded = jwt::decode(encoded, publicKey, { "ES384" });
+
+            THEN("it returns null") {
+                REQUIRE(decoded == nullptr);
+            }
+        }
+    }
+}
+
+SCENARIO("JWT's can be encoded and decoded using ES384") {
+    auto payload = R"(
+        {
+            "sub": "1234567890",
+            "name": "John Doe",
+            "admin": true
+        }
+    )"_json;
+    auto privateKey = R"(
+-----BEGIN EC PRIVATE KEY-----
+MIHbAgEBBEGPWb0IqNdCUE270P42PYnRIkqZSaXB9kkWDQkfENA3sTM5Uu+5ZF+B
+Wk336PYnNocbvtXUSl3x+1wNyw6Nbp0qpaAHBgUrgQQAI6GBiQOBhgAEAEf2nD9L
+RWnmqUSFhaT7AKXEWIhXOTr5s5UXCayDc0oUQR2SrnyevwNvlzarmBE6qZx2MFxS
+paPzXtGbPKSn89BMAD+v84XQhyzwA2j0/IISkp+JJyCk3FK4/GqW7ZIhGfu8LZbc
+hxGofNuXUwkni7KTi3w0zeEtZSVlFWTdZqCuIdGi
+-----END EC PRIVATE KEY-----
+)";
+    auto publicKey = R"(
+-----BEGIN PUBLIC KEY-----
+MIGbMBAGByqGSM49AgEGBSuBBAAjA4GGAAQAR/acP0tFaeapRIWFpPsApcRYiFc5
+OvmzlRcJrINzShRBHZKufJ6/A2+XNquYETqpnHYwXFKlo/Ne0Zs8pKfz0EwAP6/z
+hdCHLPADaPT8ghKSn4knIKTcUrj8apbtkiEZ+7wtltyHEah825dTCSeLspOLfDTN
+4S1lJWUVZN1moK4h0aI=
+-----END PUBLIC KEY-----
+)";
+
+    GIVEN("An encoded payload using a private key") {
+        auto encoded = jwt::encode(payload, privateKey, "ES384");
+
+        WHEN("it is decoded using a public key") {
+            auto decoded = jwt::decode(encoded, publicKey, { "ES384" });
+
+            THEN("it equals the payload") {
+                REQUIRE(decoded == payload);
+            }
+        }
+
+        WHEN("it is auto decoded with no algorithms specified") {
+            auto decoded = jwt::decode(encoded, publicKey);
+
+            THEN("the algorithm is determined by the token and properly decoded") {
+                REQUIRE(decoded == payload);
+            }
+        }
+
+        WHEN("it is decoded with the wrong algorithms specified") {
+            auto decoded = jwt::decode(encoded, publicKey, { "ES512" });
+
+            THEN("it returns null") {
+                REQUIRE(decoded == nullptr);
+            }
+        }
+    }
+}
+
+SCENARIO("JWT's can be encoded and decoded using ES512") {
+    auto payload = R"(
+        {
+            "sub": "1234567890",
+            "name": "John Doe",
+            "admin": true
+        }
+    )"_json;
+    auto privateKey = R"(
+-----BEGIN EC PRIVATE KEY-----
+MIHbAgEBBEGPWb0IqNdCUE270P42PYnRIkqZSaXB9kkWDQkfENA3sTM5Uu+5ZF+B
+Wk336PYnNocbvtXUSl3x+1wNyw6Nbp0qpaAHBgUrgQQAI6GBiQOBhgAEAEf2nD9L
+RWnmqUSFhaT7AKXEWIhXOTr5s5UXCayDc0oUQR2SrnyevwNvlzarmBE6qZx2MFxS
+paPzXtGbPKSn89BMAD+v84XQhyzwA2j0/IISkp+JJyCk3FK4/GqW7ZIhGfu8LZbc
+hxGofNuXUwkni7KTi3w0zeEtZSVlFWTdZqCuIdGi
+-----END EC PRIVATE KEY-----
+)";
+    auto publicKey = R"(
+-----BEGIN PUBLIC KEY-----
+MIGbMBAGByqGSM49AgEGBSuBBAAjA4GGAAQAR/acP0tFaeapRIWFpPsApcRYiFc5
+OvmzlRcJrINzShRBHZKufJ6/A2+XNquYETqpnHYwXFKlo/Ne0Zs8pKfz0EwAP6/z
+hdCHLPADaPT8ghKSn4knIKTcUrj8apbtkiEZ+7wtltyHEah825dTCSeLspOLfDTN
+4S1lJWUVZN1moK4h0aI=
+-----END PUBLIC KEY-----
+)";
+
+    GIVEN("An encoded payload using a private key") {
+        auto encoded = jwt::encode(payload, privateKey, "ES512");
+
+        WHEN("it is decoded using a public key") {
+            auto decoded = jwt::decode(encoded, publicKey, { "ES512" });
+
+            THEN("it equals the payload") {
+                REQUIRE(decoded == payload);
+            }
+        }
+
+        WHEN("it is auto decoded with no algorithms specified") {
+            auto decoded = jwt::decode(encoded, publicKey);
+
+            THEN("the algorithm is determined by the token and properly decoded") {
+                REQUIRE(decoded == payload);
+            }
+        }
+
+        WHEN("it is decoded with the wrong algorithms specified") {
+            auto decoded = jwt::decode(encoded, publicKey, { "ES256" });
+
+            THEN("it returns null") {
+                REQUIRE(decoded == nullptr);
+            }
+        }
+    }
+}

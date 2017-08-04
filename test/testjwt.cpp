@@ -4,11 +4,151 @@
 #include "catch.hpp"
 #include "jwt/jwt.hpp"
 #include "jwt/json.hpp"
+#include "jwt/cppcodec/base64_default_url.hpp"
 
 using namespace std;
 using namespace nlohmann;
+using namespace cppcodec;
 
-SCENARIO("JWT's can fail to encode and decode") {
+SCENARIO("Invalid signatures cause decoding to fail") {
+    string hsKey{ "secret" };
+    auto rsPublicKey = R"(
+-----BEGIN PUBLIC KEY-----
+MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC8kGa1pSjbSYZVebtTRBLxBz5H
+4i2p/llLCrEeQhta5kaQu/RnvuER4W8oDH3+3iuIYW4VQAzyqFpwuzjkDI+17t5t
+0tyazyZ8JXw+KgXTxldMPEL95+qVhgXvwtihXC1c5oGbRlEDvDF6Sa53rcFVsYJ4
+ehde/zUxo6UvS7UrBQIDAQAB
+-----END PUBLIC KEY-----
+)";
+    auto esPublicKey = R"(
+-----BEGIN PUBLIC KEY-----
+MIGbMBAGByqGSM49AgEGBSuBBAAjA4GGAAQAR/acP0tFaeapRIWFpPsApcRYiFc5
+OvmzlRcJrINzShRBHZKufJ6/A2+XNquYETqpnHYwXFKlo/Ne0Zs8pKfz0EwAP6/z
+hdCHLPADaPT8ghKSn4knIKTcUrj8apbtkiEZ+7wtltyHEah825dTCSeLspOLfDTN
+4S1lJWUVZN1moK4h0aI=
+-----END PUBLIC KEY-----
+)";
+
+    GIVEN("An HS256 encoded token with an invalid signature") {
+        string encodedToken{ "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9" };
+        auto encoded = encodedToken + "." + base64_url::encode("invalid");
+
+        WHEN("it is decoded") {
+            auto decoded = jwt::decode(encoded, hsKey);
+            
+            THEN("it returns null") {
+                REQUIRE(decoded == nullptr);
+            }
+        }
+    }
+
+    GIVEN("An HS384 encoded token with an invalid signature") {
+        string encodedToken{ "eyJhbGciOiJIUzM4NCIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9" };
+        auto encoded = encodedToken + "." + base64_url::encode("invalid");
+
+        WHEN("it is decoded") {
+            auto decoded = jwt::decode(encoded, hsKey);
+            
+            THEN("it returns null") {
+                REQUIRE(decoded == nullptr);
+            }
+        }
+    }
+
+    GIVEN("An HS512 encoded token with an invalid signature") {
+        string encodedToken{ "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9" };
+        auto encoded = encodedToken + "." + base64_url::encode("invalid");
+
+        WHEN("it is decoded") {
+            auto decoded = jwt::decode(encoded, hsKey);
+            
+            THEN("it returns null") {
+                REQUIRE(decoded == nullptr);
+            }
+        }
+    }
+
+    GIVEN("An RS256 encoded token with an invalid signature") {
+        string encodedToken{ "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9" };
+        auto encoded = encodedToken + "." + base64_url::encode("invalid");
+
+        WHEN("it is decoded") {
+            auto decoded = jwt::decode(encoded, rsPublicKey);
+            
+            THEN("it returns null") {
+                REQUIRE(decoded == nullptr);
+            }
+        }
+    }
+
+    GIVEN("An RS384 encoded token with an invalid signature") {
+        string encodedToken{ "eyJhbGciOiJSUzM4NCIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9" };
+        auto encoded = encodedToken + "." + base64_url::encode("invalid");
+
+        WHEN("it is decoded") {
+            auto decoded = jwt::decode(encoded, rsPublicKey);
+
+            THEN("it returns null") {
+                REQUIRE(decoded == nullptr);
+            }
+        }
+    }
+
+    GIVEN("An RS512 encoded token with an invalid signature") {
+        string encodedToken{ "eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9" };
+        auto encoded = encodedToken + "." + base64_url::encode("invalid");
+
+        WHEN("it is decoded") {
+            auto decoded = jwt::decode(encoded, rsPublicKey);
+
+            THEN("it returns null") {
+                REQUIRE(decoded == nullptr);
+            }
+        }
+    }
+
+
+    GIVEN("An ES256 encoded token with an invalid signature") {
+        string encodedToken{ "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9" };
+        auto encoded = encodedToken + "." + base64_url::encode("invalid");
+
+        WHEN("it is decoded") {
+            auto decoded = jwt::decode(encoded, esPublicKey);
+            
+            THEN("it returns null") {
+                REQUIRE(decoded == nullptr);
+            }
+        }
+    }
+
+    GIVEN("An ES384 encoded token with an invalid signature") {
+        string encodedToken{ "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9" };
+        auto encoded = encodedToken + "." + base64_url::encode("invalid");
+
+        WHEN("it is decoded") {
+            auto decoded = jwt::decode(encoded, esPublicKey);
+
+            THEN("it returns null") {
+                REQUIRE(decoded == nullptr);
+            }
+        }
+    }
+
+    GIVEN("An ES512 encoded token with an invalid signature") {
+        string encodedToken{ "eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9" };
+        auto encoded = encodedToken + "." + base64_url::encode("invalid");
+
+        WHEN("it is decoded") {
+            auto decoded = jwt::decode(encoded, esPublicKey);
+
+            THEN("it returns null") {
+                REQUIRE(decoded == nullptr);
+            }
+        }
+    }
+}
+
+SCENARIO("Invalid parameters cause decoding to fail") {
     string key{ "secret" };
     auto payload = R"(
         {

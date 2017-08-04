@@ -342,60 +342,80 @@ namespace jwt {
         return true;
     }
 
-    string encode(const json& token, const string& key, const string& alg) {
+    string encode(const json& payload, const string& key, const string& alg) {
+        // Create a JWT header defaulting to the HS256 alg if none is supplied.
         json header{
             {"typ", "JWT"},
             {"alg", alg.empty() ? "HS256" : alg }
         };
-
         auto headerStr = header.dump();
         auto encodedHeader = base64_url::encode(headerStr.c_str(), headerStr.length());
 
-        auto tokenStr = token.dump();
-        auto encodedToken = base64_url::encode(tokenStr.c_str(), tokenStr.length());
+        // Encode the payload.
+        auto payloadStr = payload.dump();
+        auto encodedPayload = base64_url::encode(payloadStr.c_str(), payloadStr.length());
 
-        auto str = encodedHeader + "." + encodedToken;
+        // Sign it and return the final JWT.
+        auto encodedToken = encodedHeader + "." + encodedPayload;
         const string& theAlg = header["alg"];
 
-        if (theAlg.find("HS") != string::npos) {
-            return str + "." + signHMAC(str, key, theAlg);
+        if (theAlg == "none") {
+            return encodedToken + ".";
+        }
+        else if (theAlg.find("HS") != string::npos) {
+            return encodedToken + "." + signHMAC(encodedToken, key, theAlg);
         }
 
-        return str + "." + signPEM(str, key, theAlg);
+        return encodedToken + "." + signPEM(encodedToken, key, theAlg);
     }
 
     json decode(const string& jwt, const string& key, const set<string>& alg) {
+        // Make sure the jwt we recieve looks like a jwt.
         auto firstPeriod = jwt.find_first_of('.');
         auto secondPeriod = jwt.find_first_of('.', firstPeriod + 1);
-        auto head = jwt.substr(0, secondPeriod);
-        auto sig = jwt.substr(secondPeriod + 1);
 
+        if (firstPeriod == string::npos || secondPeriod == string::npos) {
+            return json();
+        }
+
+        // Decode the header so we can get the alg used by the jwt.
         auto decodedHeader = base64_url::decode(jwt.substr(0, firstPeriod));
         string decodedHeaderStr{ decodedHeader.begin(), decodedHeader.end() };
         auto header = json::parse(decodedHeaderStr.c_str());
         const string& theAlg = header["alg"];
 
+        // Make sure no key is supplied if the alg is none.
+        if (theAlg == "none" && !key.empty()) {
+            return json();
+        }
         // Make sure the alg supplied is one we expect.
-        if (alg.count(theAlg) == 0 && !alg.empty()) {
+        else if (alg.count(theAlg) == 0 && !alg.empty()) {
             return json();
         }
 
-        // Verify the sig.
-        if (theAlg.find("HS") != string::npos) {
-            if (sig != signHMAC(head, key, theAlg)) {
+        auto encodedToken = jwt.substr(0, secondPeriod);
+        auto signature = jwt.substr(secondPeriod + 1);
+
+        // Verify the signature.
+        if (theAlg == "none") {
+            // Nothing to do, no verification needed.
+        }
+        else if (theAlg.find("HS") != string::npos) {
+            if (signature != signHMAC(encodedToken, key, theAlg)) {
                 return json();
             }
         }
         else {
-            if (!verifyPEM(head, sig, key, theAlg)) {
+            if (!verifyPEM(encodedToken, signature, key, theAlg)) {
                 return json();
             }
         }
 
-        auto decodedToken = base64_url::decode(jwt.substr(firstPeriod + 1, secondPeriod - firstPeriod - 1));
-        string decodedTokenStr{ decodedToken.begin(), decodedToken.end() };
-        auto token = json::parse(decodedTokenStr.c_str());
+        // Decode the payload since the jwt has been verified.
+        auto decodedPayload = base64_url::decode(jwt.substr(firstPeriod + 1, secondPeriod - firstPeriod - 1));
+        string decodedPayloadStr{ decodedPayload.begin(), decodedPayload.end() };
+        auto payload = json::parse(decodedPayloadStr.c_str());
 
-        return token;
+        return payload;
     }
 }

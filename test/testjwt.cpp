@@ -8,6 +8,60 @@
 using namespace std;
 using namespace nlohmann;
 
+SCENARIO("JWT's can be encoded and decoded using no alg") {
+    auto payload = R"(
+        {
+            "sub": "1234567890",
+            "name": "John Doe",
+            "admin": true
+        }
+    )"_json;
+
+    GIVEN("An encoded payload") {
+        auto encoded = jwt::encode(payload, "", "none");
+
+        WHEN("it is decoded") {
+            auto decoded = jwt::decode(encoded, "", { "none" });
+
+            THEN("it equals the payload") {
+                REQUIRE(decoded == payload);
+            }
+        }
+
+        WHEN("it is auto decoded with no algorithms specified") {
+            auto decoded = jwt::decode(encoded, "");
+
+            THEN("the algorithm is determined by the token and properly decoded") {
+                REQUIRE(decoded == payload);
+            }
+        }
+
+        WHEN("it is decoded with the wrong algorithms specified") {
+            auto decoded = jwt::decode(encoded, "", { "HS384" });
+
+            THEN("it returns null") {
+                REQUIRE(decoded == nullptr);
+            }
+        }
+
+        WHEN("it is decoded with a key") {
+            auto decoded = jwt::decode(encoded, "secret");
+
+            THEN("it returns null") {
+                REQUIRE(decoded == nullptr);
+            }
+        }
+
+        WHEN("it is decoded with a key and 'none' specified") {
+            auto decoded = jwt::decode(encoded, "secret", { "none" });
+
+            THEN("it returns null") {
+                REQUIRE(decoded == nullptr);
+            }
+        }
+    }
+}
+
 SCENARIO("JWT's can be encoded and decoded using HS256") {
     string key{ "secret" };
     auto payload = R"(

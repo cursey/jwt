@@ -413,7 +413,9 @@ namespace jwt {
             // Nothing to do, no verification needed.
         }
         else if (theAlg.find("HS") != string::npos) {
-            if (signature != signHMAC(encodedToken, key, theAlg)) {
+            auto calculatedSignature = signHMAC(encodedToken, key, theAlg);
+
+            if (signature != calculatedSignature || calculatedSignature.empty()) {
                 return json{};
             }
         }

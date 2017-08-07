@@ -128,7 +128,7 @@ namespace jwt {
     }
 
     string signPEM(const string& str, const string& key, const string& alg) {
-        detail::OnLeave onLeave;
+        detail::OnLeave onLeave{};
         const EVP_MD* evp = nullptr;
 
         if (alg == "RS256") {
@@ -204,7 +204,7 @@ namespace jwt {
     }
 
     bool verifyPEM(const string& str, const string& b64sig, const string& key, const string& alg) {
-        detail::OnLeave onLeave;
+        detail::OnLeave onLeave{};
         const EVP_MD* evp = nullptr;
 
         if (alg == "RS256") {

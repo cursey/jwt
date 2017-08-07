@@ -4,11 +4,9 @@
 #include "catch.hpp"
 #include "jwt/jwt.hpp"
 #include "jwt/json.hpp"
-#include "jwt/cppcodec/base64_default_url.hpp"
 
 using namespace std;
 using namespace nlohmann;
-using namespace cppcodec;
 
 SCENARIO("Invalid signatures cause decoding to fail") {
     string hsKey{ "secret" };
@@ -31,7 +29,7 @@ hdCHLPADaPT8ghKSn4knIKTcUrj8apbtkiEZ+7wtltyHEah825dTCSeLspOLfDTN
 
     GIVEN("An HS256 encoded token with an invalid signature") {
         string encodedToken{ "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9" };
-        auto encoded = encodedToken + "." + base64_url::encode("invalid");
+        auto encoded = encodedToken + ".aW52YWxpZA";
 
         WHEN("it is decoded") {
             auto decoded = jwt::decode(encoded, hsKey);
@@ -44,7 +42,7 @@ hdCHLPADaPT8ghKSn4knIKTcUrj8apbtkiEZ+7wtltyHEah825dTCSeLspOLfDTN
 
     GIVEN("An HS384 encoded token with an invalid signature") {
         string encodedToken{ "eyJhbGciOiJIUzM4NCIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9" };
-        auto encoded = encodedToken + "." + base64_url::encode("invalid");
+        auto encoded = encodedToken + ".aW52YWxpZA";
 
         WHEN("it is decoded") {
             auto decoded = jwt::decode(encoded, hsKey);
@@ -57,7 +55,7 @@ hdCHLPADaPT8ghKSn4knIKTcUrj8apbtkiEZ+7wtltyHEah825dTCSeLspOLfDTN
 
     GIVEN("An HS512 encoded token with an invalid signature") {
         string encodedToken{ "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9" };
-        auto encoded = encodedToken + "." + base64_url::encode("invalid");
+        auto encoded = encodedToken + ".aW52YWxpZA";
 
         WHEN("it is decoded") {
             auto decoded = jwt::decode(encoded, hsKey);
@@ -70,7 +68,7 @@ hdCHLPADaPT8ghKSn4knIKTcUrj8apbtkiEZ+7wtltyHEah825dTCSeLspOLfDTN
 
     GIVEN("An RS256 encoded token with an invalid signature") {
         string encodedToken{ "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9" };
-        auto encoded = encodedToken + "." + base64_url::encode("invalid");
+        auto encoded = encodedToken + ".aW52YWxpZA";
 
         WHEN("it is decoded") {
             auto decoded = jwt::decode(encoded, rsPublicKey);
@@ -83,7 +81,7 @@ hdCHLPADaPT8ghKSn4knIKTcUrj8apbtkiEZ+7wtltyHEah825dTCSeLspOLfDTN
 
     GIVEN("An RS384 encoded token with an invalid signature") {
         string encodedToken{ "eyJhbGciOiJSUzM4NCIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9" };
-        auto encoded = encodedToken + "." + base64_url::encode("invalid");
+        auto encoded = encodedToken + ".aW52YWxpZA";
 
         WHEN("it is decoded") {
             auto decoded = jwt::decode(encoded, rsPublicKey);
@@ -96,7 +94,7 @@ hdCHLPADaPT8ghKSn4knIKTcUrj8apbtkiEZ+7wtltyHEah825dTCSeLspOLfDTN
 
     GIVEN("An RS512 encoded token with an invalid signature") {
         string encodedToken{ "eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9" };
-        auto encoded = encodedToken + "." + base64_url::encode("invalid");
+        auto encoded = encodedToken + ".aW52YWxpZA";
 
         WHEN("it is decoded") {
             auto decoded = jwt::decode(encoded, rsPublicKey);
@@ -110,7 +108,7 @@ hdCHLPADaPT8ghKSn4knIKTcUrj8apbtkiEZ+7wtltyHEah825dTCSeLspOLfDTN
 
     GIVEN("An ES256 encoded token with an invalid signature") {
         string encodedToken{ "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9" };
-        auto encoded = encodedToken + "." + base64_url::encode("invalid");
+        auto encoded = encodedToken + ".aW52YWxpZA";
 
         WHEN("it is decoded") {
             auto decoded = jwt::decode(encoded, esPublicKey);
@@ -123,7 +121,7 @@ hdCHLPADaPT8ghKSn4knIKTcUrj8apbtkiEZ+7wtltyHEah825dTCSeLspOLfDTN
 
     GIVEN("An ES384 encoded token with an invalid signature") {
         string encodedToken{ "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9" };
-        auto encoded = encodedToken + "." + base64_url::encode("invalid");
+        auto encoded = encodedToken + ".aW52YWxpZA";
 
         WHEN("it is decoded") {
             auto decoded = jwt::decode(encoded, esPublicKey);
@@ -136,7 +134,7 @@ hdCHLPADaPT8ghKSn4knIKTcUrj8apbtkiEZ+7wtltyHEah825dTCSeLspOLfDTN
 
     GIVEN("An ES512 encoded token with an invalid signature") {
         string encodedToken{ "eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9" };
-        auto encoded = encodedToken + "." + base64_url::encode("invalid");
+        auto encoded = encodedToken + ".aW52YWxpZA";
 
         WHEN("it is decoded") {
             auto decoded = jwt::decode(encoded, esPublicKey);

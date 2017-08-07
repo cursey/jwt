@@ -9,14 +9,89 @@
 #include <openssl/buffer.h>
 #include <openssl/pem.h>
 
-#include "cppcodec/base64_default_url.hpp"
 #include "jwt.hpp"
 
 using namespace std;
 using namespace nlohmann;
-using namespace cppcodec;
 
 namespace jwt {
+    namespace detail {
+        void replaceAll(string& str, const string& from, const string& to) {
+            size_t pos = 0;
+
+            while ((pos = str.find(from, pos)) != string::npos) {
+                str.replace(pos, from.length(), to);
+                pos += to.length();
+            }
+        }
+
+        string b64encode(const uint8_t* data, size_t len) {
+            auto b64 = BIO_new(BIO_f_base64());
+            auto bio = BIO_new(BIO_s_mem());
+
+            bio = BIO_push(b64, bio);
+
+            BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+            BIO_write(bio, data, len);
+            BIO_flush(bio);
+
+            BUF_MEM* buf = nullptr;
+
+            BIO_get_mem_ptr(bio, &buf);
+
+            string s{ buf->data };
+
+            BIO_free_all(bio);
+
+            // Convert it to base64url.
+            s = s.substr(0, s.find_last_not_of("=") + 1);
+            replaceAll(s, "+", "-");
+            replaceAll(s, "/", "_");
+
+            return s;
+        }
+
+        vector<uint8_t> b64decode(string str) {
+            // Convert it from base64url back to normal base64.
+            size_t padding{ 0 };
+
+            replaceAll(str, "-", "+");
+            replaceAll(str, "_", "/");
+
+            switch (str.length() % 4) {
+            case 0:
+                break;
+
+            case 2:
+                str += "==";
+                padding = 2;
+                break;
+
+            case 3:
+                str += "=";
+                padding = 1;
+                break;
+
+            default:
+                return vector<uint8_t>{};
+            }
+
+            size_t len{ (str.length() * 3) / 4 - padding };
+            vector<uint8_t> buf(len);
+            
+            auto bio = BIO_new_mem_buf((void*)str.c_str(), -1);
+            auto b64 = BIO_new(BIO_f_base64());
+
+            bio = BIO_push(b64, bio);
+
+            BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+            BIO_read(bio, buf.data(), str.length());
+            BIO_free_all(bio);
+
+            return buf;
+        }
+    }
+
     string signHMAC(const string& str, const string& key, const string& alg) {
         const EVP_MD* evp = nullptr;
 
@@ -38,7 +113,7 @@ namespace jwt {
 
         HMAC(evp, key.c_str(), key.length(), (const unsigned char*)str.c_str(), str.length(), out.data(), &len);
 
-        return base64_url::encode(out.data(), len);
+        return detail::b64encode(out.data(), len);
     }
 
     string signPEM(const string& str, const string& key, const string& alg) {
@@ -77,7 +152,7 @@ namespace jwt {
             return string{};
         }
 
-        auto bufkey = BIO_new_mem_buf(key.c_str(), key.length());
+        auto bufkey = BIO_new_mem_buf((void*)key.c_str(), key.length());
         SCOPE_EXIT(if (bufkey) BIO_free(bufkey));
 
         if (!bufkey) {
@@ -124,7 +199,7 @@ namespace jwt {
         }
 
         // For RSA, we are done.
-        return base64_url::encode(sig.data(), siglen);
+        return detail::b64encode(sig.data(), siglen);
     }
 
     bool verifyPEM(const string& str, const string& b64sig, const string& key, const string& alg) {
@@ -163,14 +238,14 @@ namespace jwt {
             return false;
         }
 
-        auto sig = base64_url::decode(b64sig);
+        auto sig = detail::b64decode(b64sig);
         auto siglen = sig.size();
 
         if (sig.empty()) {
             return false;
         }
 
-        auto bufkey = BIO_new_mem_buf(key.c_str(), key.length());
+        auto bufkey = BIO_new_mem_buf((void*)key.c_str(), key.length());
         SCOPE_EXIT(if (bufkey) BIO_free(bufkey));
 
         if (!bufkey) {
@@ -210,11 +285,11 @@ namespace jwt {
             {"alg", alg.empty() ? "HS256" : alg }
         };
         auto headerStr = header.dump();
-        auto encodedHeader = base64_url::encode(headerStr.c_str(), headerStr.length());
+        auto encodedHeader = detail::b64encode((const uint8_t*)headerStr.c_str(), headerStr.length());
 
         // Encode the payload.
         auto payloadStr = payload.dump();
-        auto encodedPayload = base64_url::encode(payloadStr.c_str(), payloadStr.length());
+        auto encodedPayload = detail::b64encode((const uint8_t*)payloadStr.c_str(), payloadStr.length());
 
         // Sign it and return the final JWT.
         auto encodedToken = encodedHeader + "." + encodedPayload;
@@ -252,7 +327,7 @@ namespace jwt {
         }
 
         // Decode the header so we can get the alg used by the jwt.
-        auto decodedHeader = base64_url::decode(jwt.substr(0, firstPeriod));
+        auto decodedHeader = detail::b64decode(jwt.substr(0, firstPeriod));
         string decodedHeaderStr{ decodedHeader.begin(), decodedHeader.end() };
         auto header = json::parse(decodedHeaderStr.c_str());
         const string& theAlg = header["alg"];
@@ -287,7 +362,7 @@ namespace jwt {
         }
 
         // Decode the payload since the jwt has been verified.
-        auto decodedPayload = base64_url::decode(jwt.substr(firstPeriod + 1, secondPeriod - firstPeriod - 1));
+        auto decodedPayload = detail::b64decode(jwt.substr(firstPeriod + 1, secondPeriod - firstPeriod - 1));
         string decodedPayloadStr{ decodedPayload.begin(), decodedPayload.end() };
         auto payload = json::parse(decodedPayloadStr.c_str());
 

@@ -16,6 +16,15 @@ using namespace nlohmann;
 
 namespace jwt {
     namespace detail {
+        class OnLeave : public vector<function<void()>> {
+        public:
+            ~OnLeave() {
+                for (auto& fn : *this) {
+                    fn();
+                }
+            }
+        };
+
         void replaceAll(string& str, const string& from, const string& to) {
             size_t pos = 0;
 
@@ -78,7 +87,7 @@ namespace jwt {
 
             size_t len{ (str.length() * 3) / 4 - padding };
             vector<uint8_t> buf(len);
-            
+
             auto bio = BIO_new_mem_buf((void*)str.c_str(), -1);
             auto b64 = BIO_new(BIO_f_base64());
 
@@ -91,6 +100,8 @@ namespace jwt {
             return buf;
         }
     }
+
+    #define SCOPE_EXIT(x) do { onLeave.push_back([&]() { x; }); } while(0)
 
     string signHMAC(const string& str, const string& key, const string& alg) {
         const EVP_MD* evp = nullptr;
@@ -117,17 +128,7 @@ namespace jwt {
     }
 
     string signPEM(const string& str, const string& key, const string& alg) {
-        class OnLeave : public vector<function<void()>> {
-        public:
-            ~OnLeave() {
-                for (auto& fn : *this) {
-                    fn();
-                }
-            }
-        } onLeave;
-
-#define SCOPE_EXIT(x) do { onLeave.push_back([&]() { x; }); } while(0)
-
+        detail::OnLeave onLeave;
         const EVP_MD* evp = nullptr;
 
         if (alg == "RS256") {
@@ -203,17 +204,7 @@ namespace jwt {
     }
 
     bool verifyPEM(const string& str, const string& b64sig, const string& key, const string& alg) {
-        class OnLeave : public vector<function<void()>> {
-        public:
-            ~OnLeave() {
-                for (auto& fn : *this) {
-                    fn();
-                }
-            }
-        } onLeave;
-
-#define SCOPE_EXIT(x) do { onLeave.push_back([&]() { x; }); } while(0)
-
+        detail::OnLeave onLeave;
         const EVP_MD* evp = nullptr;
 
         if (alg == "RS256") {

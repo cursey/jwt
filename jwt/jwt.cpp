@@ -48,7 +48,7 @@ namespace jwt {
 
             BIO_get_mem_ptr(bio, &buf);
 
-            string s{ buf->data };
+            string s(buf->data, buf->length);
 
             BIO_free_all(bio);
 

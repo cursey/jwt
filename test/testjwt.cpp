@@ -8,6 +8,213 @@
 using namespace std;
 using namespace nlohmann;
 
+SCENARIO("JWT's can be verified") {
+    string key{ "secret" };
+
+    GIVEN("A JWT with a non-expired exp field") {
+        json payload{};
+        auto exp = chrono::system_clock::now() + chrono::minutes(5);
+
+        jwt::expiresAt(payload, chrono::system_clock::to_time_t(exp));
+
+        auto encoded = jwt::encode(payload, key);
+
+        WHEN("it is decoded and verified") {
+            auto decoded = jwt::decode(encoded, key);
+            auto isValid = jwt::verify(decoded, jwt::claims::EXP);
+
+            THEN("it is valid") {
+                REQUIRE(isValid == true);
+            }
+        }
+    }
+
+    GIVEN("A JWT with an expired exp field") {
+        json payload{};
+        auto exp = chrono::system_clock::now() - chrono::minutes(5);
+
+        jwt::expiresAt(payload, chrono::system_clock::to_time_t(exp));
+
+        auto encoded = jwt::encode(payload, key);
+
+        WHEN("it is decoded and verified") {
+            auto decoded = jwt::decode(encoded, key);
+            auto isValid = jwt::verify(decoded, jwt::claims::EXP);
+
+            THEN("it is invalid") {
+                REQUIRE(isValid == false);
+            }
+        }
+    }
+
+    GIVEN("A JWT with an in-time nbf field") {
+        json payload{};
+        auto nbf = chrono::system_clock::now() - chrono::minutes(5);
+
+        jwt::useAfter(payload, chrono::system_clock::to_time_t(nbf));
+
+        auto encoded = jwt::encode(payload, key);
+
+        WHEN("it is decoded and verified") {
+            auto decoded = jwt::decode(encoded, key);
+            auto isValid = jwt::verify(decoded, jwt::claims::NBF);
+
+            THEN("it is valid") {
+                REQUIRE(isValid == true);
+            }
+        }
+    }
+
+    GIVEN("A JWT with a not in-time nbf field") {
+        json payload{};
+        auto nbf = chrono::system_clock::now() + chrono::minutes(5);
+
+        jwt::useAfter(payload, chrono::system_clock::to_time_t(nbf));
+
+        auto encoded = jwt::encode(payload, key);
+
+        WHEN("it is decoded and verified") {
+            auto decoded = jwt::decode(encoded, key);
+            auto isValid = jwt::verify(decoded, jwt::claims::NBF);
+
+            THEN("it is invalid") {
+                REQUIRE(isValid == false);
+            }
+        }
+    }
+
+    GIVEN("A JWT with a valid nbf and exp field") {
+        json payload{};
+        auto nbf = chrono::system_clock::now() - chrono::minutes(5);
+        auto exp = chrono::system_clock::now() + chrono::minutes(5);
+
+        jwt::useAfter(payload, chrono::system_clock::to_time_t(nbf));
+        jwt::expiresAt(payload, chrono::system_clock::to_time_t(exp));
+
+        auto encoded = jwt::encode(payload, key);
+
+        WHEN("it is decoded and verified") {
+            auto decoded = jwt::decode(encoded, key);
+            auto isValid = jwt::verify(decoded, jwt::claims::NBF | jwt::claims::EXP);
+
+            THEN("it is valid") {
+                REQUIRE(isValid == true);
+            }
+        }
+    }
+
+    GIVEN("A JWT with a valid nbf but invalid exp field") {
+        json payload{};
+        auto nbf = chrono::system_clock::now() - chrono::minutes(10);
+        auto exp = nbf - chrono::minutes(5);
+
+        jwt::useAfter(payload, chrono::system_clock::to_time_t(nbf));
+        jwt::expiresAt(payload, chrono::system_clock::to_time_t(exp));
+
+        auto encoded = jwt::encode(payload, key);
+
+        WHEN("it is decoded and verified") {
+            auto decoded = jwt::decode(encoded, key);
+            auto isValid = jwt::verify(decoded, jwt::claims::NBF | jwt::claims::EXP);
+
+            THEN("it is invalid") {
+                REQUIRE(isValid == false);
+            }
+        }
+    }
+
+    GIVEN("A JWT with an invalid nbf but valid exp field") {
+        json payload{};
+        auto nbf = chrono::system_clock::now() + chrono::minutes(10);
+        auto exp = chrono::system_clock::now() + chrono::minutes(15);
+
+        jwt::useAfter(payload, chrono::system_clock::to_time_t(nbf));
+        jwt::expiresAt(payload, chrono::system_clock::to_time_t(exp));
+
+        auto encoded = jwt::encode(payload, key);
+
+        WHEN("it is decoded and verified") {
+            auto decoded = jwt::decode(encoded, key);
+            auto isValid = jwt::verify(decoded, jwt::claims::NBF | jwt::claims::EXP);
+
+            THEN("it is invalid") {
+                REQUIRE(isValid == false);
+            }
+        }
+    }
+
+    GIVEN("A JWT with no nbf or exp field") {
+        json payload{};
+        auto encoded = jwt::encode(payload, key);
+
+        WHEN("it is decoded and verified for nbf and exp") {
+            auto decoded = jwt::decode(encoded, key);
+            auto isValid = jwt::verify(decoded, jwt::claims::NBF | jwt::claims::EXP);
+
+            THEN("it is invalid") {
+                REQUIRE(isValid == false);
+            }
+        }
+    }
+
+    GIVEN("A JWT with an invalid iat field") {
+        json payload{
+            {"iat", "asjdflka"}
+        };
+        auto encoded = jwt::encode(payload, key);
+
+        WHEN("it is decoded and verified for iat") {
+            auto decoded = jwt::decode(encoded, key);
+            auto isValid = jwt::verify(decoded, jwt::claims::IAT);
+
+            THEN("it is invalid") {
+                REQUIRE(isValid == false);
+            }
+        }
+    }
+
+    GIVEN("A JWT with lots of claims") {
+        json payload{};
+
+        jwt::issuedBy(payload, "cursey");
+        jwt::subjectOf(payload, "auth");
+        jwt::issuedFor(payload, { "me", "you", "everyone" });
+        jwt::expiresAt(payload, chrono::system_clock::to_time_t(chrono::system_clock::now() + chrono::hours(24)));
+        jwt::useAfter(payload, chrono::system_clock::to_time_t(chrono::system_clock::now() - chrono::hours(1)));
+        jwt::issuedAt(payload);
+        jwt::identifiesAs(payload, "123abc");
+
+        auto encoded = jwt::encode(payload, key);
+
+        WHEN("it is decoded and verified for everything without extensive params") {
+            auto decoded = jwt::decode(encoded, key);
+            auto isValid = jwt::verify(decoded, jwt::claims::EVERYTHING);
+
+            THEN("it is invalid") {
+                REQUIRE(isValid == false);
+            }
+        }
+
+        WHEN("it is decoded and verified for everything with extensive params") {
+            jwt::AcceptedParameters params{};
+
+            params.issuers = { "cursey" };
+            params.subjects = { "auth", "post", "delete" };
+            params.audience = { "me" };
+            params.usedIDs = { "123ab", "12abc", "abc123" };
+
+            auto decoded = jwt::decode(encoded, key);
+            auto isValid = jwt::verify(decoded, jwt::claims::EVERYTHING, params);
+
+            cout << decoded.dump(2) << endl;
+
+            THEN("it is valid") {
+                REQUIRE(isValid == true);
+            }
+        }
+    }
+}
+
 SCENARIO("Invalid signatures cause decoding to fail") {
     string hsKey{ "secret" };
     auto rsPublicKey = R"(

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <vector>
 #include <cstdint>
 #include <functional>
@@ -358,5 +359,137 @@ namespace jwt {
         auto payload = json::parse(decodedPayloadStr.c_str());
 
         return payload;
+    }
+
+    void issuedBy(json& payload, const string& issuer) {
+        payload["iss"] = issuer;
+    }
+
+    void subjectOf(json& payload, const string& subject) {
+        payload["sub"] = subject;
+    }
+
+    void issuedFor(json& payload, const set<string>& audience) {
+        if (audience.size() == 1) {
+            payload["aud"] = (*audience.cbegin());
+        }
+        else {
+            for (const auto& member : audience) {
+                payload["aud"].push_back(member);
+            }
+        }
+    }
+
+    void expiresAt(json& payload, time_t time) {
+        payload["exp"] = time;
+    }
+
+    void useAfter(json& payload, time_t time) {
+        payload["nbf"] = time;
+    }
+
+    void issuedAt(json& payload, time_t time) {
+        payload["iat"] = time;
+    }
+
+    void identifiesAs(json& payload, const string& id) {
+        payload["jti"] = id;
+    }
+
+    bool verify(const json& payload, unsigned int claims, const AcceptedParameters& params) {
+        try {
+            // json::value<> can only be used on objects, and payloads should always
+            // be objects.
+            if (!payload.is_object()) {
+                return false;
+            }
+
+            bool isValid{ true };
+
+            // Check the issuer claim.
+            if (claims & claims::ISS) {
+                auto iss = payload.at("iss").get<string>();
+
+                if (params.issuers.count(iss) == 0) {
+                    isValid = false;
+                }
+            }
+
+            // Check the subject claim.
+            if (claims & claims::SUB) {
+                auto sub = payload.at("sub").get<string>();
+
+                if (params.subjects.count(sub) == 0) {
+                    isValid = false;
+                }
+            }
+
+            // Check the audience claim.
+            if (claims & claims::AUD) {
+                auto aud = payload.at("aud");
+
+                if (aud.is_array()) {
+                    auto audience = aud.get<set<string>>();
+                    vector<string> intersection{};
+
+                    set_intersection(audience.begin(), audience.end(), 
+                        params.audience.begin(), params.audience.end(),
+                        back_inserter(intersection));
+
+                    if (intersection.empty()) {
+                        isValid = false;
+                    }
+                }
+                else {
+                    if (params.audience.count(aud) == 0) {
+                        isValid = false;
+                    }
+                }
+            }
+
+            // Check the expires at claim.
+            if (claims & claims::EXP) {
+                auto exp = payload.at("exp").get<time_t>();
+
+                if (params.now > exp) {
+                    isValid = false;
+                }
+            }
+
+            // Check the not before claim.
+            if (claims & claims::NBF) {
+                auto nbf = payload.at("nbf").get<time_t>();
+
+                if (params.now < nbf) {
+                    isValid = false;
+                }
+            }
+
+            // Issued at claim is just for checking the age of the jwt, just check 
+            // that there is an iat entry with a resonable value.
+            if (claims & claims::IAT) {
+                auto iat = payload.at("iat");
+
+                if (!iat.is_number_unsigned()) {
+                    isValid = false;
+                }
+            }
+
+            // Check the JWT ID claim.
+            if (claims & claims::JTI) {
+                auto jti = payload.at("jti").get<string>();
+
+                if (params.usedIDs.count(jti) != 0) {
+                    isValid = false;
+                }
+            }
+
+            return isValid;
+        }
+        catch (...) {
+            // If there was a problem verifying something, then it seems resonable
+            // to return false.
+            return false;
+        }
     }
 }

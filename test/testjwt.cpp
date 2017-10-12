@@ -206,8 +206,6 @@ SCENARIO("JWT's can be verified") {
             auto decoded = jwt::decode(encoded, key);
             auto isValid = jwt::verify(decoded, jwt::claims::EVERYTHING, params);
 
-            cout << decoded.dump(2) << endl;
-
             THEN("it is valid") {
                 REQUIRE(isValid == true);
             }

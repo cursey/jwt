@@ -63,7 +63,7 @@ namespace jwt {
             BIO_free_all(bio);
 
             // Convert it to base64url.
-            s = s.substr(0, s.find_last_not_of("=") + 1);
+            s = s.substr(0, s.find_last_not_of('=') + 1);
             replaceAll(s, "+", "-");
             replaceAll(s, "/", "_");
 
@@ -422,7 +422,7 @@ namespace jwt {
             bool isValid{ true };
 
             // Check the issuer claim.
-            if (claims & claims::ISS) {
+            if ((claims & claims::ISS) != 0) {
                 auto iss = payload.at("iss").get<string>();
 
                 if (params.issuers.count(iss) == 0) {
@@ -431,7 +431,7 @@ namespace jwt {
             }
 
             // Check the subject claim.
-            if (claims & claims::SUB) {
+            if ((claims & claims::SUB) != 0) {
                 auto sub = payload.at("sub").get<string>();
 
                 if (params.subjects.count(sub) == 0) {
@@ -440,7 +440,7 @@ namespace jwt {
             }
 
             // Check the audience claim.
-            if (claims & claims::AUD) {
+            if ((claims & claims::AUD) != 0) {
                 auto aud = payload.at("aud");
 
                 if (aud.is_array()) {
@@ -463,7 +463,7 @@ namespace jwt {
             }
 
             // Check the expires at claim.
-            if (claims & claims::EXP) {
+            if ((claims & claims::EXP) != 0) {
                 auto exp = payload.at("exp").get<time_t>();
 
                 if (params.now > exp) {
@@ -472,7 +472,7 @@ namespace jwt {
             }
 
             // Check the not before claim.
-            if (claims & claims::NBF) {
+            if ((claims & claims::NBF) != 0) {
                 auto nbf = payload.at("nbf").get<time_t>();
 
                 if (params.now < nbf) {
@@ -482,7 +482,7 @@ namespace jwt {
 
             // Issued at claim is just for checking the age of the jwt, just check 
             // that there is an iat entry with a resonable value.
-            if (claims & claims::IAT) {
+            if ((claims & claims::IAT) != 0) {
                 auto iat = payload.at("iat");
 
                 if (!iat.is_number_unsigned()) {
@@ -491,7 +491,7 @@ namespace jwt {
             }
 
             // Check the JWT ID claim.
-            if (claims & claims::JTI) {
+            if ((claims & claims::JTI) != 0) {
                 auto jti = payload.at("jti").get<string>();
 
                 if (params.usedIDs.count(jti) != 0) {

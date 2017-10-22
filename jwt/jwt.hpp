@@ -15,7 +15,7 @@ namespace jwt {
     // Returns an empty string on failure.
     std::string encode(const nlohmann::json& payload, const std::string& key, const std::string& alg = "");
 
-    // Returns a null json object on failure.
+    // Returns a null json object on failure. Doesn't throw.
     nlohmann::json decode(const std::string& jwt, const std::string& key, const std::set<std::string>& alg = {});
 
     //
@@ -66,5 +66,6 @@ namespace jwt {
         std::time_t now{ std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) };
     };
 
+    // Doesn't throw.
     bool verify(const nlohmann::json& payload, unsigned int claims, const AcceptedParameters& params = {});
 }
